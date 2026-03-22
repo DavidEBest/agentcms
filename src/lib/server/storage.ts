@@ -9,7 +9,9 @@ const s3 = new S3Client({
 	credentials: {
 		accessKeyId: env.S3_ACCESS_KEY_ID!,
 		secretAccessKey: env.S3_SECRET_ACCESS_KEY!
-	}
+	},
+	requestChecksumCalculation: 'WHEN_REQUIRED',
+	responseChecksumValidation: 'WHEN_REQUIRED'
 });
 
 const BUCKET = env.S3_BUCKET;
@@ -21,7 +23,8 @@ export async function getUploadUrl(userId: string, filename: string, contentType
 	const command = new PutObjectCommand({
 		Bucket: BUCKET,
 		Key: key,
-		ContentType: contentType
+		ContentType: contentType,
+		ACL: 'public-read'
 	});
 
 	const url = await getSignedUrl(s3, command, { expiresIn: 300 });

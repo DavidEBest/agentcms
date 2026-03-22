@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -31,17 +31,18 @@
 			fd.set('contentType', file.type);
 
 			const res = await fetch('?/uploadUrl', { method: 'POST', body: fd });
-			const result = await res.json();
-			const data = result.data;
+			const result = deserialize(await res.text());
+			if (result.type !== 'success') throw new Error('Failed to get upload URL');
+			const { uploadUrl, publicUrl } = result.data as { uploadUrl: string; publicUrl: string };
 
 			// Upload directly to S3
-			await fetch(data[1][1], {
+			await fetch(uploadUrl, {
 				method: 'PUT',
 				body: file,
-				headers: { 'Content-Type': file.type }
+				headers: { 'Content-Type': file.type, 'x-amz-acl': 'public-read' }
 			});
 
-			profilePhotoUrl = data[3][1];
+			profilePhotoUrl = publicUrl;
 		} finally {
 			uploading = false;
 		}

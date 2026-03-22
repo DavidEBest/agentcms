@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
@@ -23,13 +23,12 @@
 			fd.set('filename', file.name);
 			fd.set('contentType', file.type);
 			const res = await fetch('?/uploadUrl', { method: 'POST', body: fd });
-			const result = await res.json();
-			const resData = result.data;
-			const uploadUrl = resData[1][1];
-			const publicUrl = resData[3][1];
+			const result = deserialize(await res.text());
+			if (result.type !== 'success') throw new Error('Failed to get upload URL');
+			const { uploadUrl, publicUrl } = result.data as { uploadUrl: string; publicUrl: string };
 
 			// Upload to S3
-			await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+			await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type, 'x-amz-acl': 'public-read' } });
 
 			// Register in DB
 			const addFd = new FormData();
