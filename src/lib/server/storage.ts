@@ -23,8 +23,7 @@ export async function getUploadUrl(userId: string, filename: string, contentType
 	const command = new PutObjectCommand({
 		Bucket: BUCKET,
 		Key: key,
-		ContentType: contentType,
-		ACL: 'public-read'
+		ContentType: contentType
 	});
 
 	const url = await getSignedUrl(s3, command, { expiresIn: 300 });

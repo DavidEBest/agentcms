@@ -39,7 +39,7 @@
 			await fetch(uploadUrl, {
 				method: 'PUT',
 				body: file,
-				headers: { 'Content-Type': file.type, 'x-amz-acl': 'public-read' }
+				headers: { 'Content-Type': file.type }
 			});
 
 			profilePhotoUrl = publicUrl;

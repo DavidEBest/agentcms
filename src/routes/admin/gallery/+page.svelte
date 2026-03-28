@@ -28,7 +28,7 @@
 			const { uploadUrl, publicUrl } = result.data as { uploadUrl: string; publicUrl: string };
 
 			// Upload to S3
-			await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type, 'x-amz-acl': 'public-read' } });
+			await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
 
 			// Register in DB
 			const addFd = new FormData();
