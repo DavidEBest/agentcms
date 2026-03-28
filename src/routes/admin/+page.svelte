@@ -19,7 +19,7 @@
 			<div>
 				<p class="text-amber-300 text-sm font-medium">Profile incomplete</p>
 				<p class="text-amber-400/80 text-sm mt-0.5">
-					<a href="/profile" class="underline">Add your name and bio</a> to get started.
+					<a href="/admin/profile" class="underline">Add your name and bio</a> to get started.
 				</p>
 			</div>
 		</div>

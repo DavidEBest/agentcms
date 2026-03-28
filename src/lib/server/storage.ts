@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '$env/dynamic/private';
 import { nanoid } from 'nanoid';
@@ -35,4 +35,36 @@ export async function getUploadUrl(userId: string, filename: string, contentType
 
 export async function deleteObject(key: string) {
 	await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+}
+
+// Upload multiple HTML pages; returns manifest mapping pageName → s3Key
+export async function putSitePages(
+	userId: string,
+	pages: Record<string, string>,
+	slot: 'draft' | 'published'
+): Promise<Record<string, string>> {
+	const manifest: Record<string, string> = {};
+	await Promise.all(
+		Object.entries(pages).map(async ([name, html]) => {
+			const key = `sites/${userId}/${slot}/${name}`;
+			await putSiteHtml(key, html);
+			manifest[name] = key;
+		})
+	);
+	return manifest;
+}
+
+export async function putSiteHtml(key: string, html: string): Promise<void> {
+	await s3.send(new PutObjectCommand({
+		Bucket: BUCKET,
+		Key: key,
+		Body: html,
+		ContentType: 'text/html; charset=utf-8'
+	}));
+}
+
+export async function getSiteHtml(key: string): Promise<string> {
+	const response = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+	if (!response.Body) throw new Error('Empty S3 response');
+	return response.Body.transformToString();
 }

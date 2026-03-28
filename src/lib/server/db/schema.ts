@@ -4,6 +4,7 @@ export const users = sqliteTable('users', {
 	id: text('id').primaryKey(),
 	email: text('email').notNull().unique(),
 	name: text('name'),
+	subdomain: text('subdomain').unique(),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
@@ -49,6 +50,17 @@ export const galleryItems = sqliteTable('gallery_items', {
 	order: integer('order').notNull().default(0),
 	visible: integer('visible', { mode: 'boolean' }).notNull().default(true),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+});
+
+export const generatedSites = sqliteTable('generated_sites', {
+	id: text('id').primaryKey(),
+	userId: text('user_id').notNull().unique(),
+	// JSON: Record<pageName, s3Key> e.g. {"index.html": "sites/x/draft/index.html"}
+	draftManifest: text('draft_manifest'),
+	publishedManifest: text('published_manifest'),
+	stylePrompt: text('style_prompt'),
+	chatLog: text('chat_log').notNull().default('[]'), // JSON: [{role,text}]
+	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 });
 
 export const newsItems = sqliteTable('news_items', {

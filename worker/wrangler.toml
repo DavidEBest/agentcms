@@ -1,0 +1,19 @@
+name = "easel-router"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[[kv_namespaces]]
+binding = "SUBDOMAINS"
+id = "af826c0b3dec4432a283d834934f5129"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "agentcms"
+
+[[routes]]
+pattern = "*.easel.site/*"
+zone_name = "easel.site"
+
+[[routes]]
+pattern = "*.easel.site"
+zone_name = "easel.site"

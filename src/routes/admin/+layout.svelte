@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { LayoutData } from './$types';
-	import '../../app.css';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	const nav = [
-		{ href: '/', label: 'Dashboard', icon: '▤' },
-		{ href: '/profile', label: 'Profile', icon: '◉' },
-		{ href: '/gallery', label: 'Gallery', icon: '▦' },
-		{ href: '/news', label: 'News', icon: '◈' },
-		{ href: '/links', label: 'Links', icon: '⬡' }
+		{ href: '/admin', label: 'Dashboard', icon: '▤' },
+		{ href: '/admin/profile', label: 'Profile', icon: '◉' },
+		{ href: '/admin/gallery', label: 'Gallery', icon: '▦' },
+		{ href: '/admin/news', label: 'News', icon: '◈' },
+		{ href: '/admin/links', label: 'Links', icon: '⬡' },
+		{ href: '/admin/site', label: 'Site', icon: '✦' }
 	];
 </script>
 
