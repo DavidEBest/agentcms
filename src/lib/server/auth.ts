@@ -5,8 +5,6 @@ import { nanoid } from 'nanoid';
 import { Resend } from 'resend';
 import { env } from '$env/dynamic/private';
 
-const resend = new Resend(env.RESEND_API_KEY);
-
 const TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const SESSION_COOKIE = 'session';
@@ -35,6 +33,7 @@ export async function sendMagicLink(email: string, baseUrl: string) {
 
 	const link = `${baseUrl}/auth/verify?token=${token}`;
 
+	const resend = new Resend(env.RESEND_API_KEY);
 	await resend.emails.send({
 		from: env.EMAIL_FROM ?? 'AgentCMS <noreply@agentcms.app>',
 		to: normalizedEmail,
