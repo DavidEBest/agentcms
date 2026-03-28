@@ -12,7 +12,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "node --import tsx/esm src/lib/server/db/migrate.ts",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"start": "npm run db:migrate && node build"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -30,6 +31,7 @@
 		"@anthropic-ai/sdk": "^0.80.0",
 		"@aws-sdk/client-s3": "^3.1014.0",
 		"@aws-sdk/s3-request-presigner": "^3.1014.0",
+		"@sveltejs/adapter-node": "^5.5.4",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
 		"better-sqlite3": "^12.8.0",
