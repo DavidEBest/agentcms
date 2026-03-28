@@ -56,7 +56,7 @@
 			<!-- First generation -->
 			<div class="flex-1 overflow-y-auto p-5">
 				<p class="text-zinc-400 text-sm mb-4">
-					Describe the look and feel you want. Claude will generate your portfolio site.
+					Describe the look and feel you want. We'll generate your portfolio site.
 				</p>
 
 				<form
@@ -249,7 +249,7 @@
 			{#if generating || refining}
 				<div class="flex-1 flex flex-col items-center justify-center gap-3">
 					<div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-					<p class="text-zinc-400 text-sm">Claude is {generating ? 'building' : 'updating'} your site…</p>
+					<p class="text-zinc-400 text-sm">AI is {generating ? 'building' : 'updating'} your site…</p>
 				</div>
 			{:else}
 				<iframe
@@ -263,7 +263,7 @@
 			<div class="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
 				{#if generating}
 					<div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-					<p class="text-zinc-400 text-sm">Claude is building your site…<br/>This takes about 30 seconds.</p>
+					<p class="text-zinc-400 text-sm">AI is building your site…<br/>This takes about 30 seconds.</p>
 				{:else}
 					<p class="text-zinc-600 text-4xl">◻</p>
 					<p class="text-zinc-500 text-sm">Your site preview will appear here</p>
