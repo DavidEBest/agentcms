@@ -21,6 +21,9 @@ export const actions: Actions = {
 		const name = data.get('name') as string;
 		const tagline = data.get('tagline') as string;
 		const bio = data.get('bio') as string;
+		const artistStatement = data.get('artistStatement') as string;
+		const contactEmail = data.get('contactEmail') as string;
+		const location = data.get('location') as string;
 		const profilePhotoUrl = data.get('profilePhotoUrl') as string | null;
 
 		const existing = await db.query.artistProfiles.findFirst({
@@ -30,7 +33,7 @@ export const actions: Actions = {
 		if (existing) {
 			await db
 				.update(artistProfiles)
-				.set({ name, tagline, bio, profilePhotoUrl: profilePhotoUrl || existing.profilePhotoUrl, updatedAt: new Date() })
+				.set({ name, tagline, bio, artistStatement, contactEmail, location, profilePhotoUrl: profilePhotoUrl || existing.profilePhotoUrl, updatedAt: new Date() })
 				.where(eq(artistProfiles.userId, userId));
 		} else {
 			await db.insert(artistProfiles).values({
@@ -39,6 +42,9 @@ export const actions: Actions = {
 				name,
 				tagline,
 				bio,
+				artistStatement,
+				contactEmail,
+				location,
 				profilePhotoUrl: profilePhotoUrl || null,
 				updatedAt: new Date()
 			});

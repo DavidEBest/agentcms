@@ -8,6 +8,9 @@ export interface ArtistContext {
 		name?: string | null;
 		tagline?: string | null;
 		bio?: string | null;
+		artistStatement?: string | null;
+		contactEmail?: string | null;
+		location?: string | null;
 		profilePhotoUrl?: string | null;
 	} | null;
 	gallery: Array<{ imageUrl: string; title?: string | null; description?: string | null }>;
@@ -40,18 +43,21 @@ OUTPUT FORMAT — this is critical:
 <html>...</html>
 
 PAGES TO GENERATE:
-- index.html — home/profile (hero, bio, social links)
-- gallery.html — full image gallery
-- news.html — only if the artist has published news; skip otherwise
+- index.html — home/hero (name, tagline, profile photo if available, short bio, social links)
+- gallery.html — full image gallery (all provided images, prominent)
+- about.html — bio and artist statement (if either exists); skip if neither provided
+- contact.html — contact info (email, location, social links); skip if no contact info provided
+- news.html — news/updates; only if the artist has published news items
 
 REQUIREMENTS FOR EVERY PAGE:
 - All CSS inline in <style> tags — no external CSS frameworks
 - You may use ONE Google Fonts <link> (same font across all pages for consistency)
 - Minimal vanilla JS only if it adds real value
 - Fully responsive and mobile-first
-- Consistent navigation across all pages linking to each other (use relative href="/gallery" style paths)
+- Consistent navigation across all pages linking to each other (use relative paths: href="/gallery", href="/about", etc.)
 - All gallery images use the exact URLs provided
 - Social links are real <a> tags opening in new tabs
+- Contact email is a mailto: link
 
 DESIGN PRINCIPLES:
 - Make bold, opinionated decisions — avoid generic templates
@@ -66,7 +72,10 @@ function buildContext(ctx: ArtistContext): string {
 		lines.push('ARTIST:');
 		if (ctx.profile.name) lines.push(`  Name: ${ctx.profile.name}`);
 		if (ctx.profile.tagline) lines.push(`  Tagline: ${ctx.profile.tagline}`);
+		if (ctx.profile.location) lines.push(`  Location: ${ctx.profile.location}`);
 		if (ctx.profile.bio) lines.push(`  Bio: ${ctx.profile.bio}`);
+		if (ctx.profile.artistStatement) lines.push(`  Artist Statement: ${ctx.profile.artistStatement}`);
+		if (ctx.profile.contactEmail) lines.push(`  Contact Email: ${ctx.profile.contactEmail}`);
 		if (ctx.profile.profilePhotoUrl) lines.push(`  Photo: ${ctx.profile.profilePhotoUrl}`);
 	}
 

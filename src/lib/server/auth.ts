@@ -17,11 +17,13 @@ export async function sendMagicLink(email: string, baseUrl: string) {
 	if (!user) {
 		const id = nanoid();
 		await db.insert(users).values({ id, email: normalizedEmail, createdAt: new Date() });
-		user = { id, email: normalizedEmail, name: null, createdAt: new Date() };
+		user = await db.query.users.findFirst({ where: eq(users.email, normalizedEmail) });
 	}
 
 	const token = nanoid(32);
 	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
+
+	if (!user) throw new Error('Failed to create user');
 
 	await db.insert(magicTokens).values({
 		token,

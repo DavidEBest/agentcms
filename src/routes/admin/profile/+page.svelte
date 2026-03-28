@@ -7,12 +7,18 @@
 	let name = $state('');
 	let tagline = $state('');
 	let bio = $state('');
+	let artistStatement = $state('');
+	let contactEmail = $state('');
+	let location = $state('');
 	let profilePhotoUrl = $state('');
 
 	$effect(() => {
 		name = data.profile?.name ?? '';
 		tagline = data.profile?.tagline ?? '';
 		bio = data.profile?.bio ?? '';
+		artistStatement = data.profile?.artistStatement ?? '';
+		contactEmail = data.profile?.contactEmail ?? '';
+		location = data.profile?.location ?? '';
 		profilePhotoUrl = data.profile?.profilePhotoUrl ?? '';
 	});
 	let uploading = $state(false);
@@ -116,10 +122,49 @@
 				id="bio"
 				name="bio"
 				bind:value={bio}
-				rows="6"
+				rows="4"
 				class="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
-				placeholder="Tell people about yourself and your work…"
+				placeholder="A short, conversational description of who you are…"
 			></textarea>
+		</div>
+
+		<!-- Artist Statement -->
+		<div>
+			<label for="artistStatement" class="block text-sm font-medium text-zinc-300 mb-1">Artist Statement</label>
+			<textarea
+				id="artistStatement"
+				name="artistStatement"
+				bind:value={artistStatement}
+				rows="5"
+				class="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+				placeholder="Your formal statement about your practice, process, and intentions…"
+			></textarea>
+		</div>
+
+		<!-- Contact Info -->
+		<div class="grid grid-cols-2 gap-4">
+			<div>
+				<label for="contactEmail" class="block text-sm font-medium text-zinc-300 mb-1">Contact Email</label>
+				<input
+					id="contactEmail"
+					name="contactEmail"
+					type="email"
+					bind:value={contactEmail}
+					class="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+					placeholder="hello@yourdomain.com"
+				/>
+			</div>
+			<div>
+				<label for="location" class="block text-sm font-medium text-zinc-300 mb-1">Location</label>
+				<input
+					id="location"
+					name="location"
+					type="text"
+					bind:value={location}
+					class="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+					placeholder="Brooklyn, NY"
+				/>
+			</div>
 		</div>
 
 		{#if form?.success}

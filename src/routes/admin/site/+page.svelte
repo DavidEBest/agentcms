@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 
-	let subdomainInput = $state(data.subdomain);
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const PAGE_LABELS: Record<string, string> = {
 		'index.html': 'Home',
@@ -12,7 +12,7 @@
 		'contact.html': 'Contact'
 	};
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let subdomainInput = $state(data.subdomain);
 
 	let generating = $state(false);
 	let refining = $state(false);

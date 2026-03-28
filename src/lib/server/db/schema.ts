@@ -28,6 +28,9 @@ export const artistProfiles = sqliteTable('artist_profiles', {
 	name: text('name'),
 	tagline: text('tagline'),
 	bio: text('bio'),
+	artistStatement: text('artist_statement'),
+	contactEmail: text('contact_email'),
+	location: text('location'),
 	profilePhotoUrl: text('profile_photo_url'),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 });
