@@ -61,7 +61,7 @@ export const actions: Actions = {
 		const id = data.get('id') as string;
 		const title = data.get('title') as string;
 		const description = data.get('description') as string;
-		const visible = data.get('visible') === 'true';
+		const visible = data.getAll('visible').includes('true');
 
 		await db
 			.update(galleryItems)
