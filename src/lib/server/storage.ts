@@ -67,3 +67,15 @@ export async function getSiteHtml(key: string): Promise<string> {
 	if (!response.Body) throw new Error('Empty S3 response');
 	return response.Body.transformToString();
 }
+
+export async function savePromptLog(userId: string, label: string, system: string, user: string): Promise<void> {
+	const ts = new Date().toISOString().replace(/[:.]/g, '-');
+	const key = `prompts/${userId}/${ts}-${label}.txt`;
+	const body = `=== SYSTEM ===\n${system}\n\n=== USER ===\n${user}`;
+	await s3.send(new PutObjectCommand({
+		Bucket: BUCKET,
+		Key: key,
+		Body: body,
+		ContentType: 'text/plain; charset=utf-8'
+	}));
+}

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '$env/dynamic/private';
+import { savePromptLog } from './storage';
 
 const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
@@ -117,13 +118,10 @@ function parsePages(response: string): Record<string, string> {
 	return pages;
 }
 
-export async function generateSite(ctx: ArtistContext): Promise<Record<string, string>> {
+export async function generateSite(ctx: ArtistContext, userId: string): Promise<Record<string, string>> {
 	const userMessage = `${buildContext(ctx)}\n\nGenerate a stunning multi-page portfolio site for this artist. Be creative and distinctive.`;
 
-	console.log('\n=== generateSite ===');
-	console.log('SYSTEM:\n', SYSTEM_PROMPT);
-	console.log('\nUSER:\n', userMessage);
-	console.log('===================\n');
+	savePromptLog(userId, 'generate', SYSTEM_PROMPT, userMessage).catch(() => {});
 
 	const stream = client.messages.stream({
 		model: 'claude-opus-4-6',
@@ -145,7 +143,8 @@ export async function generateSite(ctx: ArtistContext): Promise<Record<string, s
 export async function refineSite(
 	currentPages: Record<string, string>,
 	request: string,
-	ctx: ArtistContext
+	ctx: ArtistContext,
+	userId: string
 ): Promise<Record<string, string>> {
 	const pagesBlock = Object.entries(currentPages)
 		.map(([name, html]) => `=== PAGE: ${name} ===\n${html}`)
@@ -153,10 +152,7 @@ export async function refineSite(
 
 	const userMessage = `${buildContext(ctx)}\n\nCurrent site pages:\n\n${pagesBlock}\n\nApply this change: ${request}\n\nReturn all pages using the same === PAGE: filename.html === delimiter format.`;
 
-	console.log('\n=== refineSite ===');
-	console.log('SYSTEM:\n', SYSTEM_PROMPT);
-	console.log('\nUSER:\n', userMessage);
-	console.log('==================\n');
+	savePromptLog(userId, 'refine', SYSTEM_PROMPT, userMessage).catch(() => {});
 
 	const stream = client.messages.stream({
 		model: 'claude-opus-4-6',

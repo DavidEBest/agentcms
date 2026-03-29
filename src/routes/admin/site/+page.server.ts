@@ -85,7 +85,7 @@ export const actions: Actions = {
 
 		try {
 			const ctx = await getContext(userId, stylePrompt);
-			const pages = await generateSite(ctx);
+			const pages = await generateSite(ctx, userId);
 			const manifest = await putSitePages(userId, pages, 'draft');
 
 			const chatLog = JSON.stringify([
@@ -139,7 +139,7 @@ export const actions: Actions = {
 			);
 
 			const ctx = await getContext(userId, site?.stylePrompt ?? '');
-			const pages = await refineSite(currentPages, userRequest, ctx);
+			const pages = await refineSite(currentPages, userRequest, ctx, userId);
 			const manifest = await putSitePages(userId, pages, 'draft');
 
 			const chatLog = JSON.parse(site?.chatLog ?? '[]');
