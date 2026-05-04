@@ -68,6 +68,16 @@ export async function getSiteHtml(key: string): Promise<string> {
 	return response.Body.transformToString();
 }
 
+export async function saveSiteJson(userId: string, data: unknown, slot: 'draft' | 'published'): Promise<void> {
+	const key = `sites/${userId}/${slot}/site.json`;
+	await s3.send(new PutObjectCommand({
+		Bucket: BUCKET,
+		Key: key,
+		Body: JSON.stringify(data),
+		ContentType: 'application/json; charset=utf-8'
+	}));
+}
+
 export async function savePromptLog(userId: string, label: string, system: string, user: string): Promise<void> {
 	const ts = new Date().toISOString().replace(/[:.]/g, '-');
 	const key = `prompts/${userId}/${ts}-${label}.txt`;

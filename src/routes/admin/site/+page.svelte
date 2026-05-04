@@ -205,20 +205,39 @@
 					</button>
 				</form>
 
-				<form
-					method="POST"
-					action="?/publish"
-					use:enhance={() => async ({ update }) => { await update(); }}
-				>
-					<button
-						type="submit"
-						class="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
+				<div class="flex gap-2">
+					<form
+						method="POST"
+						action="?/publish"
+						use:enhance={() => async ({ update }) => { await update(); }}
+						class="flex-1"
 					>
-						{data.isPublished ? 'Republish' : 'Publish site'}
-					</button>
-				</form>
+						<button
+							type="submit"
+							class="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
+						>
+							{data.isPublished ? 'Republish' : 'Publish site'}
+						</button>
+					</form>
 
-				{#if form?.published}
+					{#if data.isPublished}
+						<form
+							method="POST"
+							action="?/publishContent"
+							use:enhance={() => async ({ update }) => { await update(); }}
+						>
+							<button
+								type="submit"
+								title="Push profile, gallery & link changes without regenerating"
+								class="py-2 px-3 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+							>
+								Push content
+							</button>
+						</form>
+					{/if}
+				</div>
+
+				{#if form?.published || form?.contentPublished}
 					<p class="text-emerald-400 text-xs text-center">
 						Live at <a href={form.url} target="_blank" class="underline">{form.url}</a>
 					</p>

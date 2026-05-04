@@ -2,6 +2,44 @@ import Anthropic from '@anthropic-ai/sdk';
 import { env } from '$env/dynamic/private';
 import { savePromptLog } from './storage';
 
+const HYDRATION_SCRIPT = `<script>
+(async()=>{
+  let d;
+  try{d=window.__easelData||await fetch('/site.json').then(r=>r.json());}catch{return;}
+  const p=d.profile||{};
+  const fill=(sel,val)=>{if(!val)return;document.querySelectorAll(sel).forEach(el=>el.textContent=val);};
+  fill('[data-easel="name"]',p.name);
+  fill('[data-easel="tagline"]',p.tagline);
+  fill('[data-easel="bio"]',p.bio);
+  fill('[data-easel="statement"]',p.artistStatement);
+  fill('[data-easel="location"]',p.location);
+  document.querySelectorAll('[data-easel="photo"]').forEach(el=>{if(p.photoUrl)el.src=p.photoUrl;});
+  const ce=document.querySelector('[data-easel="contact-email"]');
+  if(ce&&p.contactEmail){ce.textContent=p.contactEmail;ce.href='mailto:'+p.contactEmail;}
+  const populate=(containerSel,templateId,items,fillFn)=>{
+    const c=document.querySelector(containerSel);
+    const t=document.getElementById(templateId);
+    if(!c||!t||!items?.length)return;
+    c.innerHTML='';
+    items.forEach(item=>{const clone=t.content.cloneNode(true);fillFn(clone,item);c.appendChild(clone);});
+  };
+  populate('[data-easel="gallery"]','easel-gallery-item',d.gallery,(clone,item)=>{
+    const img=clone.querySelector('[data-easel="item-image"]');if(img)img.src=item.url;
+    const ttl=clone.querySelector('[data-easel="item-title"]');if(ttl)ttl.textContent=item.title||'';
+    const desc=clone.querySelector('[data-easel="item-description"]');if(desc)desc.textContent=item.description||'';
+  });
+  populate('[data-easel="links"]','easel-link-item',d.links,(clone,link)=>{
+    const a=clone.querySelector('[data-easel="link-url"]');
+    if(a){a.href=link.url;a.textContent=link.label||link.platform;a.target='_blank';a.rel='noopener';}
+  });
+  populate('[data-easel="news"]','easel-news-item',d.news,(clone,item)=>{
+    const ttl=clone.querySelector('[data-easel="news-title"]');if(ttl)ttl.textContent=item.title;
+    const dt=clone.querySelector('[data-easel="news-date"]');if(dt)dt.textContent=item.publishedAt?new Date(item.publishedAt).toLocaleDateString():'';
+    const body=clone.querySelector('[data-easel="news-body"]');if(body)body.textContent=item.body||'';
+  });
+})();
+</script>`;
+
 const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
 export interface ArtistContext {
@@ -16,7 +54,7 @@ export interface ArtistContext {
 	} | null;
 	gallery: Array<{ imageUrl: string; title?: string | null; description?: string | null }>;
 	links: Array<{ platform: string; url: string; label?: string | null }>;
-	news: Array<{ title: string; publishedAt: Date | null }>;
+	news: Array<{ title: string; body: string; publishedAt: Date | null }>;
 	stylePrompt: string;
 }
 
@@ -64,7 +102,26 @@ DESIGN PRINCIPLES:
 - Make bold, opinionated decisions — avoid generic templates
 - The style description drives creative choices in layout, typography, and color
 - Consistent visual identity across all pages
-- Prioritize the work: images should be prominent`;
+- Prioritize the work: images should be prominent
+
+DATA ATTRIBUTES — required on every page so content updates work without regeneration:
+- data-easel="name" — on any element displaying the artist name
+- data-easel="tagline" — tagline element
+- data-easel="bio" — bio element
+- data-easel="statement" — artist statement element
+- data-easel="location" — location element
+- data-easel="photo" — profile photo <img>
+- data-easel="contact-email" — contact <a> with mailto: href
+- data-easel="gallery" — the gallery container element
+- data-easel="links" — the social links container element
+- data-easel="news" — the news container element
+
+TEMPLATE ELEMENTS — include these hidden templates on pages that show that content:
+- <template id="easel-gallery-item"> — one gallery item; inside use data-easel="item-image" (img), data-easel="item-title", data-easel="item-description"
+- <template id="easel-link-item"> — one link; inside use data-easel="link-url" (a element)
+- <template id="easel-news-item"> — one news item; inside use data-easel="news-title", data-easel="news-date", data-easel="news-body"
+
+A hydration script is automatically appended — do NOT include your own fetch or hydration logic.`;
 
 function buildContext(ctx: ArtistContext): string {
 	const lines: string[] = [];
@@ -112,10 +169,33 @@ function parsePages(response: string): Record<string, string> {
 	// parts: [preamble, name1, html1, name2, html2, ...]
 	for (let i = 1; i < parts.length - 1; i += 2) {
 		const name = parts[i].trim();
-		const html = parts[i + 1].trim();
-		if (name && html) pages[name] = html;
+		let html = parts[i + 1].trim();
+		if (name && html) {
+			// Inject hydration script before </body>
+			html = html.includes('</body>')
+				? html.replace('</body>', `${HYDRATION_SCRIPT}</body>`)
+				: html + HYDRATION_SCRIPT;
+			pages[name] = html;
+		}
 	}
 	return pages;
+}
+
+export function buildSiteJson(ctx: ArtistContext) {
+	return {
+		profile: {
+			name: ctx.profile?.name ?? null,
+			tagline: ctx.profile?.tagline ?? null,
+			bio: ctx.profile?.bio ?? null,
+			artistStatement: ctx.profile?.artistStatement ?? null,
+			contactEmail: ctx.profile?.contactEmail ?? null,
+			location: ctx.profile?.location ?? null,
+			photoUrl: ctx.profile?.profilePhotoUrl ?? null,
+		},
+		gallery: ctx.gallery.map(g => ({ url: g.imageUrl, title: g.title ?? null, description: g.description ?? null })),
+		links: ctx.links.map(l => ({ platform: l.platform, url: l.url, label: l.label ?? null })),
+		news: ctx.news.map(n => ({ title: n.title, publishedAt: n.publishedAt?.toISOString() ?? null, body: n.body ?? null })),
+	};
 }
 
 export async function generateSite(ctx: ArtistContext, userId: string): Promise<Record<string, string>> {

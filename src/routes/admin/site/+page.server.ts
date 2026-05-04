@@ -4,8 +4,8 @@ import { db } from '$lib/server/db';
 import { generatedSites, artistProfiles, galleryItems, socialLinks, newsItems, users } from '$lib/server/db/schema';
 import { eq, and, asc, desc, isNotNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { generateSite, refineSite } from '$lib/server/ai';
-import { putSitePages, getSiteHtml } from '$lib/server/storage';
+import { generateSite, refineSite, buildSiteJson } from '$lib/server/ai';
+import { putSitePages, getSiteHtml, saveSiteJson } from '$lib/server/storage';
 import { env } from '$env/dynamic/private';
 
 async function getContext(userId: string, stylePrompt: string) {
@@ -86,7 +86,10 @@ export const actions: Actions = {
 		try {
 			const ctx = await getContext(userId, stylePrompt);
 			const pages = await generateSite(ctx, userId);
-			const manifest = await putSitePages(userId, pages, 'draft');
+			const [manifest] = await Promise.all([
+				putSitePages(userId, pages, 'draft'),
+				saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
+			]);
 
 			const chatLog = JSON.stringify([
 				{ role: 'user', text: stylePrompt },
@@ -140,7 +143,10 @@ export const actions: Actions = {
 
 			const ctx = await getContext(userId, site?.stylePrompt ?? '');
 			const pages = await refineSite(currentPages, userRequest, ctx, userId);
-			const manifest = await putSitePages(userId, pages, 'draft');
+			const [manifest] = await Promise.all([
+				putSitePages(userId, pages, 'draft'),
+				saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
+			]);
 
 			const chatLog = JSON.parse(site?.chatLog ?? '[]');
 			chatLog.push(
@@ -178,7 +184,11 @@ export const actions: Actions = {
 				pages[name] = await getSiteHtml(key);
 			})
 		);
-		const publishedManifest = await putSitePages(userId, pages, 'published');
+		const ctx = await getContext(userId, site?.stylePrompt ?? '');
+		const [publishedManifest] = await Promise.all([
+			putSitePages(userId, pages, 'published'),
+			saveSiteJson(userId, buildSiteJson(ctx), 'published'),
+		]);
 
 		await db.update(generatedSites)
 			.set({ publishedManifest: JSON.stringify(publishedManifest), updatedAt: new Date() })
@@ -187,5 +197,22 @@ export const actions: Actions = {
 		await writeSubdomainToKv(user.subdomain, userId);
 
 		return { published: true, url: `https://${user.subdomain}.easel.site` };
+	},
+
+	publishContent: async ({ locals }) => {
+		const userId = locals.user!.id;
+
+		const [site, user] = await Promise.all([
+			db.query.generatedSites.findFirst({ where: eq(generatedSites.userId, userId) }),
+			db.query.users.findFirst({ where: eq(users.id, userId) })
+		]);
+
+		if (!user?.subdomain) return fail(400, { error: 'Set your subdomain before publishing.' });
+		if (!site?.publishedManifest) return fail(400, { error: 'Publish the full site first.' });
+
+		const ctx = await getContext(userId, site.stylePrompt ?? '');
+		await saveSiteJson(userId, buildSiteJson(ctx), 'published');
+
+		return { contentPublished: true, url: `https://${user.subdomain}.easel.site` };
 	}
 };

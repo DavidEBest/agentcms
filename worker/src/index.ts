@@ -13,9 +13,10 @@ export default {
 			return new Response('Not found', { status: 404 });
 		}
 
-		// Map path to filename: / → index.html, /gallery → gallery.html
+		// Map path to filename: / → index.html, /gallery → gallery.html, /site.json → site.json
 		const slug = url.pathname.replace(/^\/|\/$/g, '');
-		const filename = !slug ? 'index.html' : slug.endsWith('.html') ? slug : `${slug}.html`;
+		const hasExt = slug.includes('.');
+		const filename = !slug ? 'index.html' : hasExt ? slug : `${slug}.html`;
 		const key = `sites/${userId}/published/${filename}`;
 
 		const object = await env.R2_BUCKET.get(key);
@@ -23,9 +24,13 @@ export default {
 			return new Response('Page not found', { status: 404 });
 		}
 
+		const contentType = filename.endsWith('.json')
+			? 'application/json; charset=utf-8'
+			: 'text/html; charset=utf-8';
+
 		return new Response(object.body, {
 			headers: {
-				'Content-Type': 'text/html; charset=utf-8',
+				'Content-Type': contentType,
 				'Cache-Control': 'public, max-age=60',
 			},
 		});
