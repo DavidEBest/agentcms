@@ -63,6 +63,8 @@ export const generatedSites = sqliteTable('generated_sites', {
 	publishedManifest: text('published_manifest'),
 	stylePrompt: text('style_prompt'),
 	chatLog: text('chat_log').notNull().default('[]'), // JSON: [{role,text}]
+	generationStatus: text('generation_status'), // null | 'pending' | 'done' | 'error'
+	generationError: text('generation_error'),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 });
 

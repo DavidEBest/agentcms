@@ -204,9 +204,8 @@ export async function generateSite(ctx: ArtistContext, userId: string): Promise<
 	savePromptLog(userId, 'generate', SYSTEM_PROMPT, userMessage).catch(() => {});
 
 	const stream = client.messages.stream({
-		model: 'claude-opus-4-6',
+		model: 'claude-sonnet-4-6',
 		max_tokens: 16000,
-		thinking: { type: 'adaptive' },
 		system: SYSTEM_PROMPT,
 		messages: [{ role: 'user', content: userMessage }]
 	});
@@ -235,9 +234,8 @@ export async function refineSite(
 	savePromptLog(userId, 'refine', SYSTEM_PROMPT, userMessage).catch(() => {});
 
 	const stream = client.messages.stream({
-		model: 'claude-opus-4-6',
+		model: 'claude-sonnet-4-6',
 		max_tokens: 16000,
-		thinking: { type: 'adaptive' },
 		system: SYSTEM_PROMPT,
 		messages: [{ role: 'user', content: userMessage }]
 	});

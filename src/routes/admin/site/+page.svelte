@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -16,15 +17,66 @@
 
 	let generating = $state(false);
 	let refining = $state(false);
+	let generationError = $state<string | null>(null);
 	let previewKey = $state(0);
 	let previewPage = $state('index.html');
 
+	let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
 	$effect(() => {
-		// If current preview page was removed (e.g. news not generated), reset to index
 		if (data.draftPages.length > 0 && !data.draftPages.includes(previewPage)) {
 			previewPage = data.draftPages[0];
 		}
 	});
+
+	// Resume polling if the page loads with a job already in progress
+	$effect(() => {
+		if (data.generationStatus === 'pending') {
+			if (data.draftPages.length === 0) {
+				generating = true;
+			} else {
+				refining = true;
+			}
+			startPolling();
+		}
+		return () => stopPolling();
+	});
+
+	function startPolling() {
+		stopPolling();
+		pollTimer = setTimeout(poll, 2000);
+	}
+
+	function stopPolling() {
+		if (pollTimer !== null) {
+			clearTimeout(pollTimer);
+			pollTimer = null;
+		}
+	}
+
+	async function poll() {
+		pollTimer = null;
+		try {
+			const res = await fetch('/admin/site/status');
+			const result = await res.json();
+
+			if (result.status === 'done') {
+				await invalidateAll();
+				generating = false;
+				refining = false;
+				generationError = null;
+				previewKey++;
+			} else if (result.status === 'error') {
+				generationError = result.error ?? 'Generation failed. Please try again.';
+				generating = false;
+				refining = false;
+			} else {
+				startPolling();
+			}
+		} catch {
+			startPolling();
+		}
+	}
 
 	const suggestions = [
 		'Make it darker and more moody',
@@ -64,10 +116,14 @@
 					action="?/generate"
 					use:enhance={() => {
 						generating = true;
-						return async ({ update }) => {
-							await update();
-							generating = false;
-							previewKey++;
+						generationError = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success' && (result.data as Record<string, unknown>)?.jobStarted) {
+								startPolling();
+							} else {
+								generating = false;
+								await update();
+							}
 						};
 					}}
 					class="space-y-4"
@@ -100,13 +156,16 @@
 					{#if form?.error}
 						<p class="text-red-400 text-xs">{form.error}</p>
 					{/if}
+					{#if generationError}
+						<p class="text-red-400 text-xs">{generationError}</p>
+					{/if}
 
 					<button
 						type="submit"
 						disabled={generating}
 						class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
 					>
-						{generating ? 'Generating… (may take 30s)' : 'Generate site'}
+						{generating ? 'Generating…' : 'Generate site'}
 					</button>
 				</form>
 			</div>
@@ -132,6 +191,13 @@
 					<div class="flex justify-start">
 						<div class="bg-zinc-800 text-zinc-400 text-xs rounded-lg px-3 py-2">
 							Updating…
+						</div>
+					</div>
+				{/if}
+				{#if generationError}
+					<div class="flex justify-start">
+						<div class="bg-red-900/50 text-red-400 text-xs rounded-lg px-3 py-2 max-w-[85%]">
+							{generationError}
 						</div>
 					</div>
 				{/if}
@@ -182,10 +248,14 @@
 					action="?/refine"
 					use:enhance={() => {
 						refining = true;
-						return async ({ update }) => {
-							await update();
-							refining = false;
-							previewKey++;
+						generationError = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success' && (result.data as Record<string, unknown>)?.jobStarted) {
+								startPolling();
+							} else {
+								refining = false;
+								await update();
+							}
 						};
 					}}
 					class="flex gap-2"
@@ -265,10 +335,10 @@
 				</div>
 			{/if}
 
-			{#if generating || refining}
+			{#if refining}
 				<div class="flex-1 flex flex-col items-center justify-center gap-3">
 					<div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-					<p class="text-zinc-400 text-sm">AI is {generating ? 'building' : 'updating'} your site…</p>
+					<p class="text-zinc-400 text-sm">AI is updating your site…</p>
 				</div>
 			{:else}
 				<iframe
@@ -282,7 +352,7 @@
 			<div class="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
 				{#if generating}
 					<div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-					<p class="text-zinc-400 text-sm">AI is building your site…<br/>This takes about 30 seconds.</p>
+					<p class="text-zinc-400 text-sm">AI is building your site…</p>
 				{:else}
 					<p class="text-zinc-600 text-4xl">◻</p>
 					<p class="text-zinc-500 text-sm">Your site preview will appear here</p>

@@ -5,8 +5,11 @@ import { generatedSites, artistProfiles, galleryItems, socialLinks, newsItems, u
 import { eq, and, asc, desc, isNotNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { generateSite, refineSite, buildSiteJson } from '$lib/server/ai';
+import type { ArtistContext } from '$lib/server/ai';
 import { putSitePages, getSiteHtml, saveSiteJson } from '$lib/server/storage';
 import { env } from '$env/dynamic/private';
+
+const STALE_JOB_MS = 5 * 60 * 1000;
 
 async function getContext(userId: string, stylePrompt: string) {
 	const [profile, gallery, links, news] = await Promise.all([
@@ -44,18 +47,80 @@ async function writeSubdomainToKv(subdomain: string, userId: string) {
 	if (!res.ok) throw new Error(`KV write failed: ${await res.text()}`);
 }
 
+async function runGeneration(userId: string, ctx: ArtistContext, stylePrompt: string) {
+	try {
+		const pages = await generateSite(ctx, userId);
+		const [manifest] = await Promise.all([
+			putSitePages(userId, pages, 'draft'),
+			saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
+		]);
+
+		const chatLog = JSON.stringify([
+			{ role: 'user', text: stylePrompt },
+			{ role: 'assistant', text: `Generated ${Object.keys(pages).length} pages: ${Object.keys(pages).join(', ')}` }
+		]);
+
+		await db.update(generatedSites)
+			.set({ draftManifest: JSON.stringify(manifest), chatLog, generationStatus: 'done', generationError: null, updatedAt: new Date() })
+			.where(eq(generatedSites.userId, userId));
+	} catch (e) {
+		console.error('Site generation failed:', e);
+		await db.update(generatedSites)
+			.set({ generationStatus: 'error', generationError: e instanceof Error ? e.message : 'Generation failed', updatedAt: new Date() })
+			.where(eq(generatedSites.userId, userId));
+	}
+}
+
+async function runRefinement(
+	userId: string,
+	currentPages: Record<string, string>,
+	userRequest: string,
+	ctx: ArtistContext,
+	existingChatLog: Array<{ role: string; text: string }>
+) {
+	try {
+		const pages = await refineSite(currentPages, userRequest, ctx, userId);
+		const [manifest] = await Promise.all([
+			putSitePages(userId, pages, 'draft'),
+			saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
+		]);
+
+		const chatLog = [
+			...existingChatLog,
+			{ role: 'user', text: userRequest },
+			{ role: 'assistant', text: 'Updated.' }
+		];
+
+		await db.update(generatedSites)
+			.set({ draftManifest: JSON.stringify(manifest), chatLog: JSON.stringify(chatLog), generationStatus: 'done', generationError: null, updatedAt: new Date() })
+			.where(eq(generatedSites.userId, userId));
+	} catch (e) {
+		console.error('Site refinement failed:', e);
+		await db.update(generatedSites)
+			.set({ generationStatus: 'error', generationError: e instanceof Error ? e.message : 'Refinement failed', updatedAt: new Date() })
+			.where(eq(generatedSites.userId, userId));
+	}
+}
+
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const [site, user] = await Promise.all([
 		db.query.generatedSites.findFirst({ where: eq(generatedSites.userId, userId) }),
 		db.query.users.findFirst({ where: eq(users.id, userId) })
 	]);
+
+	let generationStatus = site?.generationStatus ?? null;
+	if (generationStatus === 'pending' && site?.updatedAt) {
+		if (Date.now() - site.updatedAt.getTime() > STALE_JOB_MS) generationStatus = null;
+	}
+
 	return {
 		draftPages: Object.keys(parseManifest(site?.draftManifest ?? null)),
 		isPublished: !!site?.publishedManifest,
 		stylePrompt: site?.stylePrompt ?? '',
 		chatLog: JSON.parse(site?.chatLog ?? '[]') as Array<{ role: string; text: string }>,
-		subdomain: user?.subdomain ?? ''
+		subdomain: user?.subdomain ?? '',
+		generationStatus
 	};
 };
 
@@ -68,7 +133,6 @@ export const actions: Actions = {
 		if (!subdomain) return fail(400, { subdomainError: 'Enter a subdomain.' });
 		if (subdomain.length < 2) return fail(400, { subdomainError: 'Too short.' });
 
-		// Check not taken by another user
 		const existing = await db.query.users.findFirst({ where: eq(users.subdomain, subdomain) });
 		if (existing && existing.id !== userId) return fail(400, { subdomainError: 'Already taken.' });
 
@@ -83,41 +147,27 @@ export const actions: Actions = {
 
 		if (!stylePrompt) return fail(400, { error: 'Please describe the style you want.' });
 
-		try {
-			const ctx = await getContext(userId, stylePrompt);
-			const pages = await generateSite(ctx, userId);
-			const [manifest] = await Promise.all([
-				putSitePages(userId, pages, 'draft'),
-				saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
-			]);
+		const existing = await db.query.generatedSites.findFirst({ where: eq(generatedSites.userId, userId) });
+		if (existing?.generationStatus === 'pending') return fail(400, { error: 'A generation is already in progress.' });
 
-			const chatLog = JSON.stringify([
-				{ role: 'user', text: stylePrompt },
-				{ role: 'assistant', text: `Generated ${Object.keys(pages).length} pages: ${Object.keys(pages).join(', ')}` }
-			]);
+		const ctx = await getContext(userId, stylePrompt);
 
-			const existing = await db.query.generatedSites.findFirst({
-				where: eq(generatedSites.userId, userId)
+		if (existing) {
+			await db.update(generatedSites)
+				.set({ generationStatus: 'pending', generationError: null, stylePrompt, updatedAt: new Date() })
+				.where(eq(generatedSites.userId, userId));
+		} else {
+			await db.insert(generatedSites).values({
+				id: nanoid(), userId,
+				generationStatus: 'pending',
+				stylePrompt, chatLog: '[]',
+				updatedAt: new Date()
 			});
-
-			if (existing) {
-				await db.update(generatedSites)
-					.set({ draftManifest: JSON.stringify(manifest), stylePrompt, chatLog, updatedAt: new Date() })
-					.where(eq(generatedSites.userId, userId));
-			} else {
-				await db.insert(generatedSites).values({
-					id: nanoid(), userId,
-					draftManifest: JSON.stringify(manifest),
-					stylePrompt, chatLog,
-					updatedAt: new Date()
-				});
-			}
-
-			return { success: true };
-		} catch (e) {
-			console.error(e);
-			return fail(500, { error: 'Generation failed. Please try again.' });
 		}
+
+		runGeneration(userId, ctx, stylePrompt).catch(console.error);
+
+		return { jobStarted: true };
 	},
 
 	refine: async ({ request, locals }) => {
@@ -127,42 +177,28 @@ export const actions: Actions = {
 
 		if (!userRequest) return fail(400, { error: 'Please describe what to change.' });
 
-		const site = await db.query.generatedSites.findFirst({
-			where: eq(generatedSites.userId, userId)
-		});
+		const site = await db.query.generatedSites.findFirst({ where: eq(generatedSites.userId, userId) });
 		const draftManifest = parseManifest(site?.draftManifest ?? null);
 		if (Object.keys(draftManifest).length === 0) return fail(400, { error: 'Generate a site first.' });
+		if (site?.generationStatus === 'pending') return fail(400, { error: 'A generation is already in progress.' });
 
-		try {
-			const currentPages: Record<string, string> = {};
-			await Promise.all(
-				Object.entries(draftManifest).map(async ([name, key]) => {
-					currentPages[name] = await getSiteHtml(key);
-				})
-			);
+		const currentPages: Record<string, string> = {};
+		await Promise.all(
+			Object.entries(draftManifest).map(async ([name, key]) => {
+				currentPages[name] = await getSiteHtml(key);
+			})
+		);
 
-			const ctx = await getContext(userId, site?.stylePrompt ?? '');
-			const pages = await refineSite(currentPages, userRequest, ctx, userId);
-			const [manifest] = await Promise.all([
-				putSitePages(userId, pages, 'draft'),
-				saveSiteJson(userId, buildSiteJson(ctx), 'draft'),
-			]);
+		const ctx = await getContext(userId, site?.stylePrompt ?? '');
+		const existingChatLog = JSON.parse(site?.chatLog ?? '[]');
 
-			const chatLog = JSON.parse(site?.chatLog ?? '[]');
-			chatLog.push(
-				{ role: 'user', text: userRequest },
-				{ role: 'assistant', text: 'Updated.' }
-			);
+		await db.update(generatedSites)
+			.set({ generationStatus: 'pending', generationError: null, updatedAt: new Date() })
+			.where(eq(generatedSites.userId, userId));
 
-			await db.update(generatedSites)
-				.set({ draftManifest: JSON.stringify(manifest), chatLog: JSON.stringify(chatLog), updatedAt: new Date() })
-				.where(eq(generatedSites.userId, userId));
+		runRefinement(userId, currentPages, userRequest, ctx, existingChatLog).catch(console.error);
 
-			return { success: true };
-		} catch (e) {
-			console.error(e);
-			return fail(500, { error: 'Refinement failed. Please try again.' });
-		}
+		return { jobStarted: true };
 	},
 
 	publish: async ({ locals }) => {
