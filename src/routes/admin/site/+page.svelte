@@ -307,6 +307,14 @@
 					{/if}
 				</div>
 
+				<a
+					href="/admin/site/export"
+					download="site.zip"
+					class="block w-full py-2 text-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors"
+				>
+					Export ZIP
+				</a>
+
 				{#if form?.published || form?.contentPublished}
 					<p class="text-emerald-400 text-xs text-center">
 						Live at <a href={form.url} target="_blank" class="underline">{form.url}</a>
