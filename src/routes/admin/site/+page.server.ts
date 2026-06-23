@@ -104,9 +104,10 @@ async function runRefinement(
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
-	const [site, user] = await Promise.all([
+	const [site, user, profile] = await Promise.all([
 		db.query.generatedSites.findFirst({ where: eq(generatedSites.userId, userId) }),
-		db.query.users.findFirst({ where: eq(users.id, userId) })
+		db.query.users.findFirst({ where: eq(users.id, userId) }),
+		db.query.artistProfiles.findFirst({ where: eq(artistProfiles.userId, userId) })
 	]);
 
 	let generationStatus = site?.generationStatus ?? null;
@@ -120,7 +121,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		stylePrompt: site?.stylePrompt ?? '',
 		chatLog: JSON.parse(site?.chatLog ?? '[]') as Array<{ role: string; text: string }>,
 		subdomain: user?.subdomain ?? '',
-		generationStatus
+		generationStatus,
+		missingFields: {
+			bio: !profile?.bio,
+			statement: !profile?.artistStatement,
+			contactEmail: !profile?.contactEmail
+		}
 	};
 };
 

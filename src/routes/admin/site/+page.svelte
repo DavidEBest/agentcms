@@ -153,6 +153,18 @@
 						{/each}
 					</div>
 
+					{#if data.missingFields.bio || data.missingFields.statement || data.missingFields.contactEmail}
+						<div class="rounded-lg bg-amber-950/50 border border-amber-800/50 px-3 py-2.5 space-y-1">
+							<p class="text-amber-400 text-xs font-medium">Fill in your Profile first for best results:</p>
+							{#if data.missingFields.bio || data.missingFields.statement}
+								<p class="text-amber-500/80 text-xs">• <a href="/admin/profile" class="underline">Add your bio &amp; artist statement</a> → powers the About page</p>
+							{/if}
+							{#if data.missingFields.contactEmail}
+								<p class="text-amber-500/80 text-xs">• <a href="/admin/profile" class="underline">Add your contact email</a> → powers the Contact page</p>
+							{/if}
+						</div>
+					{/if}
+
 					{#if form?.error}
 						<p class="text-red-400 text-xs">{form.error}</p>
 					{/if}
@@ -217,6 +229,20 @@
 					</button>
 				{/each}
 			</div>
+
+			<!-- Profile completeness hint -->
+			{#if data.missingFields.bio || data.missingFields.statement || data.missingFields.contactEmail}
+				<div class="mx-4 mb-1 rounded-lg bg-amber-950/50 border border-amber-800/50 px-3 py-2">
+					<p class="text-amber-400 text-xs font-medium mb-1">Some pages may be empty:</p>
+					{#if data.missingFields.bio || data.missingFields.statement}
+						<p class="text-amber-500/80 text-xs">• <a href="/admin/profile" class="underline">Add bio &amp; statement</a> → About page</p>
+					{/if}
+					{#if data.missingFields.contactEmail}
+						<p class="text-amber-500/80 text-xs">• <a href="/admin/profile" class="underline">Add contact email</a> → Contact page</p>
+					{/if}
+					<p class="text-amber-600/60 text-xs mt-1">After updating Profile, click "Push content" to apply.</p>
+				</div>
+			{/if}
 
 			<!-- Subdomain + publish -->
 			<div class="p-4 border-t border-zinc-800 space-y-2">

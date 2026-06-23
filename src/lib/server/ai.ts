@@ -24,7 +24,7 @@ const HYDRATION_SCRIPT = `<script>
     items.forEach(item=>{const clone=t.content.cloneNode(true);fillFn(clone,item);c.appendChild(clone);});
   };
   populate('[data-easel="gallery"]','easel-gallery-item',d.gallery,(clone,item)=>{
-    const img=clone.querySelector('[data-easel="item-image"]');if(img)img.src=item.url;
+    const img=clone.querySelector('[data-easel="item-image"]');if(img){img.src=item.url;img.alt=item.title||'';img.title=item.title||'';}
     const ttl=clone.querySelector('[data-easel="item-title"]');if(ttl)ttl.textContent=item.title||'';
     const desc=clone.querySelector('[data-easel="item-description"]');if(desc)desc.textContent=item.description||'';
   });
@@ -82,18 +82,18 @@ OUTPUT FORMAT — this is critical:
 <html>...</html>
 
 PAGES TO GENERATE:
-- index.html — home/hero (name, tagline, profile photo if available, short bio, social links)
-- gallery.html — full image gallery (all provided images, prominent)
-- about.html — bio and artist statement (if either exists); skip if neither provided
-- contact.html — contact info (email, location, social links); skip if no contact info provided
-- news.html — news/updates; only if the artist has published news items
+- index.html — always include; home/hero (name, tagline, profile photo if available, short bio, social links)
+- gallery.html — always include; full image gallery (all provided images, prominent)
+- about.html — include only if bio or artist statement is provided; skip entirely if neither exists
+- contact.html — include only if contact email, location, or social links are provided; skip entirely if none exist
+- news.html — include only if news items are provided; skip entirely if none exist
 
 REQUIREMENTS FOR EVERY PAGE:
 - All CSS inline in <style> tags — no external CSS frameworks
 - You may use ONE Google Fonts <link> (same font across all pages for consistency)
 - Minimal vanilla JS only if it adds real value
 - Fully responsive and mobile-first
-- Consistent navigation across all pages linking to each other (use relative paths: href="/gallery", href="/about", etc.)
+- Navigation must use .html extensions (href="/gallery.html", href="/about.html", etc.) and must ONLY link to pages you are actually generating in this response — never add a nav link to a page you are skipping
 - All gallery images use the exact URLs provided
 - Social links are real <a> tags opening in new tabs
 - Contact email is a mailto: link
@@ -115,6 +115,8 @@ DATA ATTRIBUTES — required on every page so content updates work without regen
 - data-easel="gallery" — the gallery container element
 - data-easel="links" — the social links container element
 - data-easel="news" — the news container element
+
+CRITICAL — inline content: always write the actual provided text directly inside these elements. The data attributes allow future updates but the page must be fully readable before JavaScript runs. Never leave a data-easel element empty — if you have content for it, put it in the element.
 
 TEMPLATE ELEMENTS — include these hidden templates on pages that show that content:
 - <template id="easel-gallery-item"> — one gallery item; inside use data-easel="item-image" (img), data-easel="item-title", data-easel="item-description"
