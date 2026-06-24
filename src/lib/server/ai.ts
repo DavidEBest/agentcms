@@ -218,6 +218,15 @@ export async function generateSite(ctx: ArtistContext, userId: string): Promise<
 	const text = message.content.find((b) => b.type === 'text');
 	if (!text || text.type !== 'text') throw new Error('No HTML in response');
 
+	if (message.stop_reason === 'max_tokens') {
+		const partial = Object.keys(parsePages(text.text));
+		throw new Error(
+			partial.length > 0
+				? `Generation was cut off before finishing (token limit). Got ${partial.length} page${partial.length !== 1 ? 's' : ''} (${partial.join(', ')}) — some pages are incomplete. Try a shorter style description or regenerate.`
+				: 'Generation hit the token limit before any page completed. Try a shorter style description.'
+		);
+	}
+
 	const pages = parsePages(text.text);
 	if (Object.keys(pages).length === 0) throw new Error('Could not parse pages from response');
 	return pages;
@@ -247,6 +256,15 @@ export async function refineSite(
 	const message = await stream.finalMessage();
 	const text = message.content.find((b) => b.type === 'text');
 	if (!text || text.type !== 'text') throw new Error('No HTML in response');
+
+	if (message.stop_reason === 'max_tokens') {
+		const partial = Object.keys(parsePages(text.text));
+		throw new Error(
+			partial.length > 0
+				? `Refinement was cut off before finishing (token limit). Got ${partial.length} page${partial.length !== 1 ? 's' : ''} (${partial.join(', ')}) — some pages may be incomplete. Try again.`
+				: 'Refinement hit the token limit before any page completed. Try again.'
+		);
+	}
 
 	const pages = parsePages(text.text);
 	if (Object.keys(pages).length === 0) throw new Error('Could not parse pages from response');
