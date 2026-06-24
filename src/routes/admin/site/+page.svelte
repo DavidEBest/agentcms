@@ -17,6 +17,8 @@
 
 	let generating = $state(false);
 	let refining = $state(false);
+	let publishing = $state(false);
+	let pushingContent = $state(false);
 	let generationError = $state<string | null>(null);
 	let previewKey = $state(0);
 	let previewPage = $state('index.html');
@@ -305,14 +307,21 @@
 					<form
 						method="POST"
 						action="?/publish"
-						use:enhance={() => async ({ update }) => { await update(); }}
+						use:enhance={() => {
+							publishing = true;
+							return async ({ update }) => {
+								publishing = false;
+								await update();
+							};
+						}}
 						class="flex-1"
 					>
 						<button
 							type="submit"
-							class="w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
+							disabled={publishing}
+							class="w-full py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
 						>
-							{data.isPublished ? 'Republish' : 'Publish site'}
+							{publishing ? 'Publishing…' : data.isPublished ? 'Republish' : 'Publish site'}
 						</button>
 					</form>
 
@@ -320,14 +329,21 @@
 						<form
 							method="POST"
 							action="?/publishContent"
-							use:enhance={() => async ({ update }) => { await update(); }}
+							use:enhance={() => {
+								pushingContent = true;
+								return async ({ update }) => {
+									pushingContent = false;
+									await update();
+								};
+							}}
 						>
 							<button
 								type="submit"
+								disabled={pushingContent}
 								title="Push profile, gallery & link changes without regenerating"
-								class="py-2 px-3 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+								class="py-2 px-3 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-60 text-zinc-200 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
 							>
-								Push content
+								{pushingContent ? 'Pushing…' : 'Push content'}
 							</button>
 						</form>
 					{/if}
@@ -341,9 +357,13 @@
 					Export ZIP
 				</a>
 
-				{#if form?.published || form?.contentPublished}
+				{#if form?.published}
 					<p class="text-emerald-400 text-xs text-center">
-						Live at <a href={form.url} target="_blank" class="underline">{form.url}</a>
+						✓ Published — <a href={form.url} target="_blank" class="underline">{form.url}</a>
+					</p>
+				{:else if form?.contentPublished}
+					<p class="text-emerald-400 text-xs text-center">
+						✓ Content updated — <a href={form.url} target="_blank" class="underline">{form.url}</a>
 					</p>
 				{/if}
 			</div>
