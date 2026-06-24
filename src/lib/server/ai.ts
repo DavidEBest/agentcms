@@ -5,7 +5,8 @@ import { savePromptLog } from './storage';
 const HYDRATION_SCRIPT = `<script>
 (async()=>{
   let d;
-  try{d=window.__easelData||await fetch('/site.json').then(r=>r.json());}catch{return;}
+  try{d=window.__easelData||await fetch('/site.json').then(r=>r.ok?r.json():null);}catch{return;}
+  if(!d)return;
   const p=d.profile||{};
   const fill=(sel,val)=>{if(!val)return;document.querySelectorAll(sel).forEach(el=>el.textContent=val);};
   fill('[data-easel="name"]',p.name);
