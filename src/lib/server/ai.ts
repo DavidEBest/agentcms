@@ -174,9 +174,10 @@ function parsePages(response: string): Record<string, string> {
 		const name = parts[i].trim();
 		let html = parts[i + 1].trim();
 		if (name && html) {
-			// Inject hydration script before </body>
-			html = html.includes('</body>')
-				? html.replace('</body>', `${HYDRATION_SCRIPT}</body>`)
+			// Inject before the last </body> to avoid matching </body> in comments/scripts
+			const bodyClose = html.lastIndexOf('</body>');
+			html = bodyClose !== -1
+				? html.slice(0, bodyClose) + HYDRATION_SCRIPT + html.slice(bodyClose)
 				: html + HYDRATION_SCRIPT;
 			pages[name] = html;
 		}
@@ -208,7 +209,7 @@ export async function generateSite(ctx: ArtistContext, userId: string): Promise<
 
 	const stream = client.messages.stream({
 		model: 'claude-sonnet-4-6',
-		max_tokens: 16000,
+		max_tokens: 32000,
 		system: SYSTEM_PROMPT,
 		messages: [{ role: 'user', content: userMessage }]
 	});
@@ -238,7 +239,7 @@ export async function refineSite(
 
 	const stream = client.messages.stream({
 		model: 'claude-sonnet-4-6',
-		max_tokens: 16000,
+		max_tokens: 48000,
 		system: SYSTEM_PROMPT,
 		messages: [{ role: 'user', content: userMessage }]
 	});
