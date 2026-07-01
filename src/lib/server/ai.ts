@@ -41,6 +41,43 @@ const HYDRATION_SCRIPT = `<script>
 })();
 </script>`;
 
+const CONTACT_SCRIPT = `<script>
+(()=>{
+  const form=document.getElementById('easel-contact-form');
+  if(!form)return;
+  const status=document.getElementById('easel-contact-status');
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    const btn=form.querySelector('button[type="submit"]');
+    const orig=btn?.textContent;
+    if(btn){btn.disabled=true;btn.textContent='Sending\u2026';}
+    if(status){status.textContent='';delete status.dataset.state;}
+    try{
+      const res=await fetch('https://easel.site/api/contact',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          name:form.elements.namedItem('name')?.value,
+          email:form.elements.namedItem('email')?.value,
+          message:form.elements.namedItem('message')?.value,
+        })
+      });
+      const data=await res.json().catch(()=>({}));
+      if(res.ok){
+        form.reset();
+        if(status){status.textContent="Message sent \u2014 I\u2019ll be in touch soon.";status.dataset.state='success';}
+      }else{
+        if(status){status.textContent=data.error||'Something went wrong. Please try again.';status.dataset.state='error';}
+      }
+    }catch{
+      if(status){status.textContent='Could not send. Please check your connection and try again.';status.dataset.state='error';}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=orig;}
+    }
+  });
+})();
+</script>`;
+
 const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
 export interface ArtistContext {
@@ -86,7 +123,7 @@ PAGES TO GENERATE:
 - index.html — always include; home/hero (name, tagline, profile photo if available, short bio, social links)
 - gallery.html — always include; full image gallery (all provided images, prominent)
 - about.html — include only if bio or artist statement is provided; skip entirely if neither exists
-- contact.html — include only if contact email, location, or social links are provided; skip entirely if none exist
+- contact.html — include only if contact email, location, or social links are provided; skip entirely if none exist. Must include a contact form (see CONTACT FORM below)
 - news.html — include only if news items are provided; skip entirely if none exist
 
 REQUIREMENTS FOR EVERY PAGE:
@@ -124,7 +161,17 @@ TEMPLATE ELEMENTS — include these hidden templates on pages that show that con
 - <template id="easel-link-item"> — one link; inside use data-easel="link-url" (a element)
 - <template id="easel-news-item"> — one news item; inside use data-easel="news-title", data-easel="news-date", data-easel="news-body"
 
-A hydration script is automatically appended — do NOT include your own fetch or hydration logic.`;
+A hydration script is automatically appended — do NOT include your own fetch or hydration logic.
+
+CONTACT FORM (contact.html only):
+Include a beautifully styled contact form with these exact attributes — a contact form handler script is automatically injected:
+- <form id="easel-contact-form"> wrapping all fields
+- <input name="name" type="text" required> — visitor's name
+- <input name="email" type="email" required> — visitor's email
+- <textarea name="message" required> — their message
+- <button type="submit"> — send button with compelling label (e.g. "Send message", "Get in touch")
+- <div id="easel-contact-status"></div> — empty div for inline success/error feedback; style [data-state="success"] green and [data-state="error"] red
+Show the artist's contact email and location above or alongside the form if provided. Do not add your own form submission JavaScript.`;
 
 function buildContext(ctx: ArtistContext): string {
 	const lines: string[] = [];
@@ -175,10 +222,11 @@ function parsePages(response: string): Record<string, string> {
 		let html = parts[i + 1].trim();
 		if (name && html) {
 			// Inject before the last </body> to avoid matching </body> in comments/scripts
+			const inject = HYDRATION_SCRIPT + CONTACT_SCRIPT;
 			const bodyClose = html.lastIndexOf('</body>');
 			html = bodyClose !== -1
-				? html.slice(0, bodyClose) + HYDRATION_SCRIPT + html.slice(bodyClose)
-				: html + HYDRATION_SCRIPT;
+				? html.slice(0, bodyClose) + inject + html.slice(bodyClose)
+				: html + inject;
 			pages[name] = html;
 		}
 	}
